@@ -60,14 +60,14 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: CDK Bootstrap
+        working-directory: infra
         if: github.event_name == 'push' && github.ref == 'refs/heads/test'
         run: |
-          cd infra
           cdk bootstrap
 
       - name: CDK Deploy
+        working-directory: infra
         if: github.event_name == 'push' && github.ref == 'refs/heads/test'
         run: |
-          cd infra
           cdk deploy AwsSamplePythonAppStack --require-approval never -c apiToken=${{ secrets.API_TOKEN }}
 
