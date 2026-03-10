@@ -195,7 +195,7 @@ On every push or pull request to `main`/`master`, it:
 3. **Installs dependencies**
 4. **Runs tests** (`pytest`)
 5. **Installs CDK CLI** and CDK Python dependencies
-6. **Configures AWS credentials** using **GitHub OIDC + IAM Role**
+6. **Configures AWS credentials** using **AWS access keys from secrets**
 7. **Bootstraps** the CDK environment (if not already)
 8. **Deploys** the `AwsSamplePythonAppStack` with an API token from secrets
 
@@ -203,7 +203,8 @@ On every push or pull request to `main`/`master`, it:
 
 In your GitHub repository settings, configure these secrets:
 
-- `AWS_ROLE_ARN` – ARN of an IAM role that GitHub Actions can assume via OIDC, with permissions for CDK deploy (CloudFormation, ECS, ECR, IAM, etc.)
+- `AWS_ACCESS_KEY_ID` – AWS access key ID for an IAM user with permissions for CDK deploy (CloudFormation, ECS, ECR, IAM, etc.)
+- `AWS_SECRET_ACCESS_KEY` – AWS secret access key corresponding to the access key ID
 - `AWS_REGION` – e.g. `us-east-1`
 - `API_TOKEN` – the Bearer token clients must use (e.g. `token005` for reference; passed as CDK context and injected as `API_TOKEN` into the container)
 
@@ -213,22 +214,20 @@ Once set, any push to the main branch will automatically:
 - Build the Docker image as part of the CDK deployment
 - Update the ECS Fargate service behind the ALB
 
-#### Using GitHub Actions OIDC with AWS
+#### Using AWS Access Keys with GitHub Actions
 
-This project uses **GitHub OpenID Connect (OIDC)** instead of long‑lived AWS access keys:
+This project uses **AWS access keys** for authentication:
 
-- You create an **IAM role** in AWS with:
-  - A **trust policy** that allows the GitHub OIDC provider (`token.actions.githubusercontent.com`) to assume the role, restricted to your repository and branch.
-  - An IAM policy granting the permissions required for CDK deploy.
-- In GitHub Actions, `aws-actions/configure-aws-credentials@v4` assumes this role using OIDC, based on `AWS_ROLE_ARN` and `AWS_REGION` secrets.
+- Create an **IAM user** in AWS with:
+  - An IAM policy granting the permissions required for CDK deploy (CloudFormation, ECS, ECR, IAM, etc.).
+- In GitHub Actions, `aws-actions/configure-aws-credentials@v4` uses the access key ID and secret access key from secrets to authenticate.
 
 High‑level IAM setup steps:
 
-1. In AWS, configure the GitHub OIDC identity provider (if not already present).
-2. Create an IAM role for GitHub Actions with that provider as the trusted entity.
-3. In the trust policy, limit access using conditions such as repository and branch (e.g. `repo:owner/name:ref:refs/heads/main`).
-4. Attach a policy allowing CDK operations (CloudFormation, ECS, ECR, IAM where needed).
-5. Copy the role ARN into the GitHub secret `AWS_ROLE_ARN`.
+1. In AWS, create an IAM user for GitHub Actions.
+2. Attach a policy allowing CDK operations (CloudFormation, ECS, ECR, IAM where needed).
+3. Generate access keys for the user.
+4. Copy the access key ID and secret access key into the GitHub secrets `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
 ---
 
