@@ -1,0 +1,73 @@
+name: Python App CI/CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    environment: test
+
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install application dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: pytest
+
+      - name: Build Docker image
+        run: docker build -t aws-sample-python-app .
+
+      - name: Set up Node.js (for CDK CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Install infrastructure dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r infra/requirements.txt
+
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: CDK Bootstrap
+        working-directory: infra
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cdk bootstrap
+
+      - name: CDK Deploy
+        working-directory: infra
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cdk deploy AwsSamplePythonAppStack --require-approval never -c apiToken=${{ secrets.API_TOKEN }}
+
