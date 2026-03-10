@@ -18,7 +18,7 @@ INFRA_DIR = Path(__file__).resolve().parent.parent
 def test_cdk_synth_succeeds():
     """Run 'cdk synth' from infra/ to validate the stack synthesizes."""
     result = subprocess.run(
-        ["cdk", "synth", "--quiet"],
+        ["cdk", "synth"],
         cwd=str(INFRA_DIR),
         capture_output=True,
         text=True,
